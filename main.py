@@ -43,19 +43,19 @@ def query_failed(html, failure_message):
     return re.search(failure_message, html)
 
 
-def add_apartment(block):
+def add_apartment(apartment):
     with open('apartments.json', "r+") as json_file:
         data = json.loads(json_file.read())
-        data['apartments'].append(block)
+        data['apartments'].append(apartment)
         json_file.seek(0)
         json_file.truncate()
         json.dump(data, json_file)
 
 
-def apartment_exists(block):
+def apartment_exists(apartment):
     with open('apartments.json', "r") as json_file:
         data = json.loads(json_file.read())
-        if block in data["apartments"]:
+        if apartment in data["apartments"]:
             return True
         return False
 
