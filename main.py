@@ -4,42 +4,58 @@ import requests
 
 from bs4 import BeautifulSoup
 
-query = "/pezinok/predaj/?p[param1][from]=&p[param1][to]=180000&p[categories][ids]=10001.10002.10003&p[page]="
-url = "https://www.nehnutelnosti.sk" + query
-failure = "Nenašli sa žiadne výsledky"
+webs = {
+    "nehnutelnosti": {
+        "domain": "https://www.nehnutelnosti.sk",
+        "query": "/pezinok/predaj/?p[param1][from]=&p[param1][to]=190000&p[categories][ids]=10001.10002.10003&p[page]=%s",
+        "scraped_class": "advertisement-item--content__title d-block text-truncate",
+        "failure_message": "Nenašli sa žiadne výsledky"
+    },
+}
 
 
-def scrape_nehnutelnosti():
-    page = 1
-    while True:
-        response = requests.post(url + str(page))
-        text = response.text
-        if re.search(failure, text):
-            break
+def scrape_webs():
+    for web in webs.values():
+        page = 1
 
-        # WEB SCRAPING
-        soup = BeautifulSoup(text, 'html.parser')
-        block_of_flats = soup.find_all(class_="advertisement-item--content__title d-block text-truncate", href=True)
-        for block in block_of_flats:
-            if not block_exists(block.text):
-                add_block(block.text)
-                add_link(block["href"])
-        page += 1
+        while True:
+            url = web["domain"] + web["query"] % str(page)
+            response = requests.post(url)
+            html = response.text
+            if query_failed(html, web["failure_message"]):
+                break
+
+            scrape_apartments(html, web["scraped_class"])
+            page += 1
 
 
-def add_block(block):
-    with open('byty.json', "r+") as json_file:
+def scrape_apartments(html, scraped_class):
+    soup = BeautifulSoup(html, 'html.parser')
+    apartments = soup.find_all(class_=scraped_class, href=True)
+
+    for apartment in apartments:
+        if not apartment_exists(apartment.text):
+            add_apartment(apartment.text)
+            add_link(apartment["href"])
+
+
+def query_failed(html, failure_message):
+    return re.search(failure_message, html)
+
+
+def add_apartment(block):
+    with open('apartments.json', "r+") as json_file:
         data = json.loads(json_file.read())
-        data['byty'].append(block)
+        data['apartments'].append(block)
         json_file.seek(0)
         json_file.truncate()
         json.dump(data, json_file)
 
 
-def block_exists(block):
-    with open('byty.json', "r") as json_file:
+def apartment_exists(block):
+    with open('apartments.json', "r") as json_file:
         data = json.loads(json_file.read())
-        if block in data["byty"]:
+        if block in data["apartments"]:
             return True
         return False
 
@@ -50,4 +66,4 @@ def add_link(link):
 
 
 if __name__ == "__main__":
-    scrape_nehnutelnosti()
+    scrape_webs()
